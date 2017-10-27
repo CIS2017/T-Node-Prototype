@@ -1,0 +1,129 @@
+﻿
+    {
+        private static int[] LED_PINS = new[] { 24, 25, 26, 27 };
+        private GpioPin[] leds;
+        private int colorIdx = 0;
+
+        private const int IN_PIN = 18;
+        private GpioController gpio;
+        private DispatcherTimer timer;
+        private GpioPinValue currentValue;
+        private GpioPin input;
+        private MessageWebSocket ws;
+
+        private async void ConnectSocket()
+        {
+            var ws = new MessageWebSocket();
+            ws.MessageReceived += (s, e) =>
+            {
+                var reader = e.GetDataReader();
+                var message = reader.ReadString(reader.UnconsumedBufferLength);
+                Debug.WriteLine(message);
+            };
+            await ws.ConnectAsync(new Uri("ws://localhost:5000/ws"));
+            this.ws = ws;
+        }
+                
+        private async void Timer_Tick(object sender, object e)
+        {
+            DataWriter messageWriter = new DataWriter(ws.OutputStream);
+            messageWriter.WriteString("hello");
+            await messageWriter.StoreAsync();
+
+            if (leds == null) { return; }
+
+            //var r = new Random((int)DateTime.Now.Ticks);
+            //var colorIdx = r.Next(CoreBoxLightColor.All.Length);
+            var color = CoreBoxLightColor.All[colorIdx++ % CoreBoxLightColor.All.Length];
+
+            var binary = color.GetBytes()[0] >> 2;
+            Debug.WriteLine( (color.ToString() + ": ").PadRight(20) + Convert.ToString(binary, 2).PadLeft(4, '0') );
+
+            for(var i = 0; i < LED_PINS.Length; i++)
+            {
+                var isOn = (binary & (1 << i)) > 0;
+                leds[i].Write(isOn ? GpioPinValue.High : GpioPinValue.Low);
+            }
+        }
+
+		
+
+            //this.input = gpio.OpenPin(IN_PIN, GpioSharingMode.Exclusive);
+            //input.SetDriveMode(GpioPinDriveMode.InputPullUp);
+            //input.DebounceTimeout = TimeSpan.FromMilliseconds(100);
+            //input.ValueChanged += Input_ValueChanged;
+
+			
+        //private void InitGpio()
+        //{
+        //    this.gpio = GpioController.GetDefault();
+        //    if(gpio == null) { return; }
+
+        //    this.led = gpio.OpenPin(LED_PIN, GpioSharingMode.Exclusive);
+        //    this.currentValue = GpioPinValue.High;
+        //    led.Write(currentValue);
+        //    led.SetDriveMode(GpioPinDriveMode.Output);
+
+        //    this.input = gpio.OpenPin(IN_PIN, GpioSharingMode.Exclusive);
+        //    input.SetDriveMode(GpioPinDriveMode.InputPullUp);
+        //    input.DebounceTimeout = TimeSpan.FromMilliseconds(100);
+        //    input.ValueChanged += Input_ValueChanged;
+        //}
+
+        //private async void Input_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs args)
+        //{
+        //    //Check.IsChecked = args.Edge == GpioPinEdge.RisingEdge;
+        //    await Task.Delay(0).ContinueWith(a =>
+        //    {
+        //        led.Write(args.Edge == GpioPinEdge.FallingEdge ? GpioPinValue.High : GpioPinValue.Low);
+        //    });
+
+        //    try
+        //    {
+        //        await client.PutRecordAsync(new Amazon.Kinesis.Model.PutRecordRequest
+        //        {
+        //            Data = new MemoryStream(Encoding.UTF8.GetBytes(DateTime.Now.ToString())),
+        //            PartitionKey = "1",
+        //            StreamName = "sensor"
+        //        });
+        //    }
+        //    catch(Exception ex)
+        //    {
+
+        //    }
+
+        //    await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+        //    {
+        //        //Check.IsChecked = args.Edge == GpioPinEdge.RisingEdge;
+        //    });
+        //}
+
+        /*
+        
+            //var a = new Amazon.Kinesis.AmazonKinesisClient();
+            //     [0]: "proto_ui.cis-01.cert.pem"
+            //     [1]: "proto_ui.cis01.pfx"
+
+            var clientCert = new X509Certificate2(GetResource("proto_ui.cis01.pfx"), "open");
+            var caCert = new X509Certificate(GetResource("proto_ui.cis-01.cert.pem"));
+
+            var client = new Mqttlient(
+                BrokerHostName,
+                BrokerPort,
+                true,
+                MqttSslProtocols.TLSv1_2
+            );
+
+            try
+            {
+                client.Connect("I'm a big dummy");
+
+                if (!client.IsConnected)
+                {
+                    throw new ArgumentException("WTF");
+                }
+            }
+            catch(Exception ex)
+            {
+            }
+        */
